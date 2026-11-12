@@ -1,0 +1,94 @@
+:root {
+  --bg: #0e1116;
+  --panel: #161b22;
+  --border: #2a3038;
+  --text: #e6edf3;
+  --muted: #9aa4ad;
+  --accent: #b77cff;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+header { padding: 18px 24px 8px; border-bottom: 1px solid var(--border); }
+header h1 { margin: 0 0 4px; font-size: 20px; }
+.subtitle { margin: 0; color: var(--muted); font-size: 13px; max-width: 900px; }
+
+.controls {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+fieldset {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 0;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+legend { color: var(--muted); padding: 0 4px; }
+
+.slider-row { display: grid; grid-template-columns: 130px minmax(120px, 200px) 40px; align-items: center; gap: 8px; }
+.slider-row output { color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+input[type=checkbox] { accent-color: var(--accent); }
+
+select, button {
+  background: #0d1117;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+  max-width: 100%;
+}
+button { cursor: pointer; }
+button:hover { border-color: var(--accent); }
+.buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+.other-label { margin-top: 4px; color: var(--muted); }
+
+.small { font-size: 12px; }
+.muted { color: var(--muted); }
+
+.description { padding: 8px 24px 0; color: var(--muted); font-size: 13px; min-height: 1.5em; }
+.description b { color: var(--text); }
+
+.plots {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr));
+  gap: 16px;
+  padding: 10px 24px 16px;
+}
+.plot-container { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px; min-width: 0; }
+.plot-container h3 { margin: 0 0 4px 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+#plot-2d, #plot-3d { width: 100%; height: 600px; }
+
+footer {
+  padding: 10px 24px 20px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+footer a { color: var(--accent); }
+.error { color: #ff7b72; }

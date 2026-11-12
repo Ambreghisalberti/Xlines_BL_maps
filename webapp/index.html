@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BL X-lines - Delta Vz maps and X-lines at the magnetopause</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+</head>
+<body>
+  <header>
+    <h1>BL X-lines</h1>
+    <p class="subtitle">
+      Reconnection X-lines (&Delta;V<sub>z</sub> = 0 with diverging flows) found in the magnetopause boundary layer
+      observed by MMS, THEMIS and Cluster, for given IMF clock angles and dipole tilts.
+    </p>
+  </header>
+
+  <section class="controls">
+    <fieldset>
+      <legend>Dataset</legend>
+      <select id="dataset"></select>
+      <div id="dataset-info" class="muted small"></div>
+    </fieldset>
+
+    <fieldset class="sliders">
+      <legend>Conditions</legend>
+      <div class="slider-row">
+        <label for="cla">IMF clock angle (°)</label>
+        <input type="range" id="cla">
+        <output id="cla-value"></output>
+      </div>
+      <div class="slider-row">
+        <label for="tilt">Dipole tilt (°)</label>
+        <input type="range" id="tilt">
+        <output id="tilt-value"></output>
+      </div>
+      <label><input type="checkbox" id="all-tilts"> all tilts (selection on the clock angle only)</label>
+      <div class="small muted">CLA width 30°, tilt width 10°, paper parameters.</div>
+      <label for="other" class="other-label">Other saved X-lines</label>
+      <select id="other"><option value="">—</option></select>
+    </fieldset>
+
+    <fieldset>
+      <legend>Display</legend>
+      <label><input type="checkbox" id="main-part" checked> only the main part of the line</label>
+      <div class="slider-row">
+        <label for="max-gap">max gap (R<sub>E</sub>)</label>
+        <input type="range" id="max-gap" min="0.5" max="6" step="0.5" value="2">
+        <output id="max-gap-value">2</output>
+      </div>
+      <label><input type="checkbox" id="show-map"> show the &Delta;V<sub>z</sub> map</label>
+      <span id="map-status" class="small muted"></span>
+    </fieldset>
+
+    <fieldset>
+      <legend>Compare</legend>
+      <div class="buttons">
+        <button type="button" id="keep">Keep this line</button>
+        <button type="button" id="clear">Clear kept lines</button>
+      </div>
+      <div class="buttons">
+        <button type="button" id="all-tilts-at-cla">All tilts at this CLA</button>
+        <button type="button" id="all-clas-at-tilt">All CLAs at this tilt</button>
+      </div>
+    </fieldset>
+  </section>
+
+  <div id="description" class="description"></div>
+
+  <section class="plots">
+    <div class="plot-container">
+      <h3>Y–Z plane (seen from the Sun)</h3>
+      <div id="plot-2d"></div>
+    </div>
+    <div class="plot-container">
+      <h3>3D view</h3>
+      <div id="plot-3d"></div>
+    </div>
+  </section>
+
+  <footer>
+    <div id="status">loading…</div>
+    <div class="links">
+      <a href="https://github.com/Ambreghisalberti/Xlines_BL_maps">code (github)</a> ·
+      <a href="https://doi.org/10.5281/zenodo.20312678">data (zenodo)</a> ·
+      compute your own X-lines with <code>notebooks/07_interactive_xlines.ipynb</code>
+    </div>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -143,8 +143,13 @@ def compute_xline(df, conditions, k_neighbors=1000, max_distance_barycenter=1.5,
 # ----------------------------------------------------------------------------------------------------------------
 # Cache
 # ----------------------------------------------------------------------------------------------------------------
+def _clean_conditions(conditions):
+    # rounded so that slider values such as 9.999999999999998 are the same request as 10
+    return [[str(c), round(float(centre), 6), round(float(width), 6)] for c, centre, width in conditions]
+
+
 def _canonical_parameters(conditions, **params):
-    conds = sorted([[str(c), float(centre), float(width)] for c, centre, width in conditions])
+    conds = sorted(_clean_conditions(conditions))
     p = {k: (float(v) if isinstance(v, (int, float, np.floating, np.integer)) and not isinstance(v, bool) else v)
          for k, v in params.items()}
     return {'conditions': conds, **dict(sorted(p.items()))}
@@ -262,8 +267,8 @@ class XlineCalculator:
             res['from_cache'] = True
             return res
         t0 = time.time()
-        res = compute_xline(self.df, conditions, **{k: params[k] for k in COMPUTATION_PARAMETERS})
-        res.update({'key': key, 'conditions': [[str(c), float(m), float(w)] for c, m, w in conditions],
+        res = compute_xline(self.df, _clean_conditions(conditions), **{k: params[k] for k in COMPUTATION_PARAMETERS})
+        res.update({'key': key, 'conditions': _clean_conditions(conditions),
                     'parameters': params, 'dataset': os.path.basename(self.dataset_path),
                     'dataset_fingerprint': self.fingerprint, 'code_version': XLINE_CODE_VERSION,
                     'computed_on': pd.Timestamp.now().isoformat(timespec='seconds'),

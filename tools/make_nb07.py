@@ -40,16 +40,23 @@ from blxline.paths import OUT, MODEL_LINES
 md(r"""
 ## 1. Dataset and caches
 
-`DATASET`: the map dataset (output of `04_map_dataset.ipynb`, or downloaded from Zenodo into the folder `data/` of
-the repo, see the README). Without it, you can still look at all the saved X-lines, but not compute new ones.
+`DATASET`: the map dataset of the paper, `BL_dataset_multisat_limited.pkl` (1.1 GB), published on Zenodo
+([10.5281/zenodo.20312678](https://doi.org/10.5281/zenodo.20312678)). Set `DOWNLOAD = True` to download it into `OUT`
+(the folder `data/` of the repo outside kaa). Without it, you can still look at all the saved X-lines, but not compute
+new ones. You can also use another map dataset (e.g. the output of `04_map_dataset.ipynb`): the saved results of each
+dataset are kept apart.
 """)
 code(r"""
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from blxline.xlines import XlineCalculator, plot_xline, plot_xlines_3d, describe, PAPER_PARAMETERS
+from blxline.data import download
 
-DATASET = f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'
+DOWNLOAD = False  # True: download the dataset from Zenodo if it is not in OUT (1.1 GB)
+DATASET = f'{OUT}/BL_dataset_multisat_limited.pkl'
+if DOWNLOAD:
+    DATASET = download('BL_dataset_multisat_limited.pkl', OUT)
 PERSONAL_CACHE = f'{OUT}/xline_cache_personal'
 
 calc = XlineCalculator(DATASET, PERSONAL_CACHE)  # the dataset itself is only read when something must be computed
@@ -248,24 +255,22 @@ plot_xlines_3d(results, colors=['#0d0887', '#cc4778', '#f0a830'], labels=[f'CLA 
 md(r"""
 ## 5. Check: same results as the paper
 
-With the paper parameters and the dataset used for the paper, this gives exactly the X-lines saved for the paper
-(`DeltaVz_cla*_tilt*.pkl`, `05_maps_and_xline.ipynb`). The original paper dataset mixes several prediction models
-(see the README); the default `DATASET` above is the new one, predicted with the final model on all satellites.
-This check only runs where the paper dataset is available (kaa).
+With the paper parameters, the dataset of Zenodo gives exactly the X-lines and maps of the paper
+(`DeltaVz_cla*_tilt*.pkl`, `05_maps_and_xline.ipynb`; checked for the 182 X-lines of the paper grid). This cell
+recomputes one of them; it only runs where the paper files are available (kaa).
 """)
 code(r"""
-PAPER_DATASET = '/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'
-if os.path.exists(PAPER_DATASET):
-    paper_calc = XlineCalculator(PAPER_DATASET, PERSONAL_CACHE)
+reference = f'{MODEL_LINES}/DeltaVz_cla150_tilt0.pkl'
+if os.path.exists(reference) and calc.has_dataset:
     p = {k: PAPER_PARAMETERS[k] for k in ['k_neighbors', 'max_distance_barycenter', 'median_distance', 'N_grid', 'sigma_map', 'sigma_line']}
-    res = paper_calc.get([('omni_CLA', 150, 30), ('tilt', 0, 10)], with_map=True, **p)
-    ref = pd.read_pickle(f'{MODEL_LINES}/DeltaVz_cla150_tilt0.pkl')
+    res = calc.get([('omni_CLA', 150, 30), ('tilt', 0, 10)], with_map=True, recompute=True, **p)
+    ref = pd.read_pickle(reference)
     print('same X-line as the paper:', np.array_equal(res['Yxline'], np.asarray(ref['Yxline'], float)) and
           np.array_equal(res['Zxline'], np.asarray(ref['Zxline'], float)))
     print('max |difference| of the Delta Vz map:', np.nanmax(abs(res['DeltaVz'] - ref['DeltaVz'])),
           '| same NaN pattern:', np.array_equal(np.isnan(res['DeltaVz']), np.isnan(ref['DeltaVz'])))
 else:
-    print('Paper dataset not available here: check skipped.')
+    print('Paper files or dataset not available here: check skipped.')
 """)
 md(r"""
 ## 6. Add your X-lines to the shared cache
