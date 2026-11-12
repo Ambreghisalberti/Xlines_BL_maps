@@ -1,0 +1,780 @@
+[
+ {
+  "file": "02_labelled_set_and_model.ipynb",
+  "title": "Step 2 - Labelled training set and final model",
+  "intro": "Builds the labelled set MMS1 + THA + THB + C1 and trains the final model: an ensemble of HistGradientBoosting classifiers (max_iter=404, max_leaf_nodes=342), one per feature set given by `choose_best_features()` (feature sets with precision > 0.83 and recall > 0.821 in `all_precisions.pkl` / `all_recalls.pkl`); the prediction is the mean probability.\n\nInputs: `labelled_MMS1_THA_THB_2025-06-10.pkl` (MMS1, THA, THB labelled points), `C1_interesting_for_BL_extended.pkl` and the C1 label catalogues of 2025-08-04.\n\nOutputs: `{OUT}/labelled_MMS1_THA_THB_C1.pkl` and `{OUT}/model_MMS_THEMIS_Cluster.pkl`.\n\n**Note**: the model used in step 3 is the frozen file `/home/ghisalberti/GradientBoosting/diagnostics/model_MMS_THEMIS_Cluster.pkl`. Retraining does not give exactly the same model (HistGradientBoosting uses a random validation split for early stopping), and the exact training file of 2025-09-15 is lost: the file `labelled_MMS1_THA_THB_C1.pkl` was rewritten on 2026-04-13 with only 66432 of the 82515 C1 rows, and the code that wrote it is lost. Here the dated file of cell 18 is used as the training set.",
+  "cells": [
+   {
+    "src": "GradientBoosting/GradientBoostingBL_Cluster.ipynb",
+    "cell": 0,
+    "why": "imports",
+    "repl": [
+     [
+      "from swapp.catalogues import catalogue_to_edges_df",
+      "from blxline.catalogues import catalogue_to_edges_df",
+      2
+     ],
+     [
+      "from UTime.GradientBoosting import compute_scores, recall_precision_curve, choose_best_features",
+      "from blxline.model import compute_scores, recall_precision_curve, choose_best_features",
+      1
+     ],
+     [
+      "from UTime.GradientBoosting import get_all_feature_combinaisons_multiple_choices, find_best_threshold, get_features_from_choice, get_all_feature_choices, get_name_choice, temporal_split, fit_and_assess_on_different_and_common_testsets, compute_scores, add_scores, ensemble_learning_on_different_features, x_y_set",
+      "from blxline.model import get_all_feature_combinaisons_multiple_choices, find_best_threshold, get_features_from_choice, get_all_feature_choices, get_name_choice, temporal_split, compute_scores, add_scores, x_y_set",
+      1
+     ],
+     [
+      "from UTime.GradientBoosting import temporal_split, x_y_set, add_scores, compute_scores",
+      "from blxline.model import temporal_split, x_y_set, add_scores, compute_scores",
+      1
+     ],
+     [
+      "from swapp.engineered_features.tangent_to_MP import V_normal_to_Shue, V_tan1_to_Shue, V_tan2_to_Shue\n",
+      "",
+      1
+     ]
+    ]
+   },
+   {
+    "md": "## Labelled set"
+   },
+   {
+    "src": "GradientBoosting/GradientBoostingBL_Cluster.ipynb",
+    "cell": 2,
+    "why": "C1 labels from the catalogues (the pred_BL column read here is not used for training)"
+   },
+   {
+    "src": "GradientBoosting/GradientBoostingBL_Cluster.ipynb",
+    "cell": 11,
+    "why": "MMS1, THA, THB labelled points"
+   },
+   {
+    "src": "GradientBoosting/GradientBoostingBL_Cluster.ipynb",
+    "cell": 15
+   },
+   {
+    "code": "from spok.models.planetary import mp_shue1998_tangents, mp_shue1998_normal\nsubdata = labelled\n\n# Compute MP frame features\nx_normal, y_normal, z_normal = mp_shue1998_normal(subdata.theta.values, subdata.phi.values)\n[x_tan1, y_tan1, z_tan1], [x_tan2, y_tan2, z_tan2] = mp_shue1998_tangents(subdata.theta.values, subdata.phi.values)\n\nsubdata['Bn_MP'] = x_normal * subdata.Bx.values + y_normal * subdata.By.values + z_normal * subdata.Bz.values\nsubdata['Btan1_MP'] = x_tan1 * subdata.Bx.values + y_tan1 * subdata.By.values + z_tan1 * subdata.Bz.values\nsubdata['Btan2_MP'] = x_tan2 * subdata.Bx.values + y_tan2 * subdata.By.values + z_tan2 * subdata.Bz.values\nlabelled = subdata",
+    "why": "lost step. Bn_MP, Btan1_MP, Btan2_MP (mandatory features) on all labelled points, with the code of TrainingCommonModelChatGPT cell 10 (lines inside the docstring). Checked: same values as labelled_MMS1_THA_THB_C1_2025-08-05.pkl to 1e-14"
+   },
+   {
+    "src": "GradientBoosting/GradientBoostingBL_Cluster.ipynb",
+    "cell": 18,
+    "why": "the training cell reads the undated name: written directly under that name (reconstruction of the lost step)",
+    "repl": [
+     [
+      "f'/home/ghisalberti/make_datasets/labelled_MMS1_THA_THB_C1_{str(datetime.now())[:10]}.pkl'",
+      "f'{OUT}/labelled_MMS1_THA_THB_C1.pkl'",
+      1
+     ]
+    ]
+   },
+   {
+    "md": "## Final model"
+   },
+   {
+    "src": "GradientBoosting/GradientBoostingBL_Cluster.ipynb",
+    "cell": 131,
+    "why": "trains model_MMS_THEMIS_Cluster on 100% of the labelled set",
+    "repl": [
+     [
+      "'/home/ghisalberti/make_datasets/labelled_MMS1_THA_THB_C1.pkl'",
+      "f'{OUT}/labelled_MMS1_THA_THB_C1.pkl'",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/GradientBoosting/diagnostics/model_MMS_THEMIS_Cluster.pkl'",
+      "f'{OUT}/model_MMS_THEMIS_Cluster.pkl'",
+      1
+     ],
+     [
+      "from UTime.GradientBoosting import pred_ensemble",
+      "from blxline.model import pred_ensemble",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/GradientBoosting/all_pred/pred_",
+      "f'{OUT}/all_pred/pred_",
+      1
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "file": "03_predictions_and_BL_dataset.ipynb",
+  "title": "Step 3 - Apply the model and build the BL dataset",
+  "intro": "Applies the final model (`model_MMS_THEMIS_Cluster.pkl`, trained on MMS1+THA+THB+C1) to the 8 satellites, selects the BL points (pred_BL > 0.5), finds the closest clean MSP and MSH points (cusps cut Bz>=-50 nT on both, Np>=3 on MSH), averages their features, merges the satellites and adds the propagated OMNI values.\n\nInputs: `/DATA/ghisalberti/Datasets/{mission}/{sat}/{sat}_interesting_for_BL.pkl` (step 1), the model files in `/home/ghisalberti/GradientBoosting/diagnostics/`, OMNI files in `/DATA/ghisalberti/Datasets/OMNI/OMNI/`.\n\nOutput: `{OUT}/BL_MMS1_THEMIS_Cluster_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl`.\n\nNote: `date_model='2025-05-06'` is only a label in file names, and the 2025-05-06 model file is read only for the list of features used in `dropna`.",
+  "cells": [
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 1,
+    "why": "imports",
+    "repl": [
+     [
+      "from UTime.GradientBoosting import compute_shap_values_ensemble_learning, get_all_features_ensemble_model, pred_ensemble",
+      "from blxline.model import get_all_features_ensemble_model, pred_ensemble",
+      1
+     ],
+     [
+      "from UTime.GradientBoosting import get_all_features_ensemble_model\n",
+      "",
+      1
+     ],
+     [
+      "from swapp.dataframes import",
+      "from blxline.dataframes import",
+      1
+     ],
+     [
+      "from swapp.make_plots.plot_maps import",
+      "from blxline.maps import",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 2,
+    "why": "get_common_features"
+   },
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 3,
+    "why": "parameters (suffix = _without_cusps_withoutNp<3_all_sat)"
+   },
+   {
+    "md": "## Predictions on the 8 satellites"
+   },
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 6,
+    "why": "predictions (all_sat=True -> model_MMS_THEMIS_Cluster.pkl)",
+    "repl": [
+     [
+      "#for sat, mission in zip(['MMS1','THA','THB','THC','THD','THE','C1','C3'], ['MMS']+['THEMIS']*5+['Cluster']*2):\n#for sat, mission in zip(['THD'], ['THEMIS']):\nfor sat, mission in zip(['C1'],['Cluster']):",
+      "for sat, mission in zip(['MMS1','THA','THB','THC','THD','THE','C1','C3'], ['MMS']+['THEMIS']*5+['Cluster']*2):",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/GradientBoosting/all_pred/",
+      "f'{OUT}/all_pred/",
+      null
+     ]
+    ]
+   },
+   {
+    "md": "## BL points, closest clean MSP and MSH points"
+   },
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 20,
+    "why": "BL selection + closest MSP/MSH",
+    "repl": [
+     [
+      "#for sat, mission in zip(['MMS1','THA','THB','THC','THD','THE','C1','C3'], ['MMS']+['THEMIS']*5+['Cluster']*2):\n#for sat, mission in zip(['THD'], ['THEMIS']):\n#for sat, mission in zip(['THA','THB','THC','THD','THE'], ['THEMIS']*5):\nfor sat, mission in zip(['C1'], ['Cluster']):",
+      "#for sat, mission in zip(['THD'], ['THEMIS']):\n#for sat, mission in zip(['THA','THB','THC','THD','THE'], ['THEMIS']*5):\nfor sat, mission in zip(['MMS1','THA','THB','THC','THD','THE','C1','C3'], ['MMS']+['THEMIS']*5+['Cluster']*2):",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/GradientBoosting/all_pred/",
+      "f'{OUT}/all_pred/",
+      null
+     ]
+    ]
+   },
+   {
+    "md": "## Median of the neighbouring MSP and MSH points"
+   },
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 25,
+    "why": "neighbour medians (_MSP, _MSH columns)",
+    "repl": [
+     [
+      "#satellites = ['MMS1','THA','THB','THC','THD','THE','C1','C3']\nsatellites = ['C1']",
+      "satellites = ['MMS1','THA','THB','THC','THD','THE','C1','C3']",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/GradientBoosting/all_pred/",
+      "f'{OUT}/all_pred/",
+      null
+     ]
+    ]
+   },
+   {
+    "md": "## Merge the 8 satellites"
+   },
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 41,
+    "why": "merge",
+    "repl": [
+     [
+      "f'/home/ghisalberti/GradientBoosting/all_pred/",
+      "f'{OUT}/all_pred/",
+      null
+     ],
+     [
+      "f'/DATA/ghisalberti/Datasets/BL_MMS1_THEMIS_Cluster",
+      "f'{OUT}/BL_MMS1_THEMIS_Cluster",
+      2
+     ]
+    ]
+   },
+   {
+    "md": "## Add the propagated OMNI values"
+   },
+   {
+    "src": "GradientBoosting/CommonPred.ipynb",
+    "cell": 50,
+    "why": "OMNI (Safrankova propagation)",
+    "repl": [
+     [
+      "f'/DATA/ghisalberti/Datasets/BL_MMS1_THEMIS_Cluster",
+      "f'{OUT}/BL_MMS1_THEMIS_Cluster",
+      1
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "file": "04_map_dataset.ipynb",
+  "title": "Step 4 - BL depth and final map dataset",
+  "intro": "Computes the BL depth from the ion spectra (distance to the neighbouring MSP and MSH spectra, `compute_depth`), its global rank-uniformization (`uniform_depthonly_spectro`, used by the maps) and its local one, the dipole tilt, and saves the 28 columns used by the maps.\n\nInput: output of step 3. Output: `{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl`.\n\nDepthComputation cells 4, 6, 7, 10 were dropped: they only add columns (logs, normalised features) that are not in the final file.",
+  "cells": [
+   {
+    "src": "ReorderingTemporalData/DepthComputation.ipynb",
+    "cell": 0,
+    "why": "imports",
+    "repl": [
+     [
+      "from UTime.GradientBoosting import choose_best_features",
+      "from blxline.model import choose_best_features",
+      1
+     ],
+     [
+      "from swapp.make_plots.plot_maps import",
+      "from blxline.maps import",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "ReorderingTemporalData/DepthComputation.ipynb",
+    "cell": 11,
+    "why": "compute_depth, uniformize_locally (get_features_and_weights is unused)"
+   },
+   {
+    "src": "ReorderingTemporalData/DepthComputation.ipynb",
+    "cell": 14,
+    "why": "diagnostic plots, called by the next cell"
+   },
+   {
+    "src": "ReorderingTemporalData/DepthComputation.ipynb",
+    "cell": 32,
+    "why": "tilt, depth, uniformization",
+    "repl": [
+     [
+      "f'/DATA/ghisalberti/Datasets/BL_MMS1_THEMIS_Cluster_for_depth_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_MMS1_THEMIS_Cluster_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "ReorderingTemporalData/DepthComputation.ipynb",
+    "cell": 35,
+    "why": "save the final map dataset",
+    "repl": [
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "file": "05_maps_and_xline.ipynb",
+  "title": "Step 5 - BL maps and X-line",
+  "intro": "Maps of dVz = Vz - Vz_MSH in the external BL (`uniform_depthonly_spectro > 0.83`), projected on the magnetopause, for a given IMF clock angle (gaussian weights, std 30\u00b0) and dipole tilt (std 10\u00b0): weighted KNN (`knn_weighted_feature_map`). The X-line is the dVz = 0 line where the flow diverges (`find_stagnation_line`, sigma=7).\n\nInput: output of step 4. Outputs: `{OUT}/xlines/DeltaVz_cla{cla}_tilt{tilt}.pkl` (169 files) and `{OUT}/xlines/DeltaVz_cla{cla}.pkl` (13 files), used by step 6, and the paper figures in `{OUT}/figures/`.\n\n`prepare_data`, `get_weights_gaussian` and `knn_weighted_feature_map` were defined in FinalMapsPaper cell 2 with the same code as in swapp; they are imported from `blxline.maps`.",
+  "cells": [
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 0,
+    "why": "imports (unused swapp imports removed)",
+    "repl": [
+     [
+      "from swapp.make_plots.plot_maps import make_mp_grid, gaussian_filter_nan_datas, plot_colorbar_separate_axis, plot_colorbar_next_to_axis, get_map_whole_dataset, get_valid, plot_CLA_sector",
+      "from blxline.maps import make_mp_grid, gaussian_filter_nan_datas, plot_CLA_sector\nfrom blxline.maps import prepare_data, get_weights_gaussian, knn_weighted_feature_map",
+      1
+     ],
+     [
+      "from swapp.make_plots.plot_maps import reposition, maps_by_sectors, make_slice",
+      "from blxline.maps import reposition, make_slice",
+      1
+     ],
+     [
+      "from swapp.make_plots.plot_maps import find_stagnation_line",
+      "from blxline.maps import find_stagnation_line",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 632,
+    "why": "keep_main_part (used by the JGR figure)"
+   },
+   {
+    "md": "## X-lines on the (clock angle, tilt) grid, used by step 6"
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 628,
+    "why": "DeltaVz_cla{cla}_tilt{tilt}.pkl",
+    "repl": [
+     [
+      "from swapp.make_plots.plot_maps import gaussian_filter_nan_1d",
+      "from blxline.maps import gaussian_filter_nan_1d",
+      1
+     ],
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 629,
+    "why": "DeltaVz_cla{cla}.pkl",
+    "repl": [
+     [
+      "from swapp.make_plots.plot_maps import gaussian_filter_nan_1d",
+      "from blxline.maps import gaussian_filter_nan_1d",
+      1
+     ],
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      1
+     ]
+    ]
+   },
+   {
+    "md": "## Paper figures: maps for several clock angles and tilts"
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 303,
+    "why": "X-lines for the figures (cells 303 -> 288 -> 286 -> 292 ran in this order)",
+    "repl": [
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 288
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 286,
+    "repl": [
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ],
+     [
+      "'/home/ghisalberti/Figures/maps_clas_zoom1.png'",
+      "f'{OUT}/figures/maps_clas_zoom1.png'",
+      1
+     ],
+     [
+      "'/home/ghisalberti/Figures/maps_clas_zoom2.png'",
+      "f'{OUT}/figures/maps_clas_zoom2.png'",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 292,
+    "repl": [
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ],
+     [
+      "'/home/ghisalberti/Figures/maps_tilts_zoom1.png'",
+      "f'{OUT}/figures/maps_tilts_zoom1.png'",
+      1
+     ],
+     [
+      "'/home/ghisalberti/Figures/maps_tilts_zoom2.png'",
+      "f'{OUT}/figures/maps_tilts_zoom2.png'",
+      1
+     ]
+    ]
+   },
+   {
+    "md": "## Paper figure: comparison of the BL X-line with the models"
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 630,
+    "why": "comparison_models_jgr3.png, first pass: run=1 needs the maps computed by a previous pass, so set to 0 here",
+    "repl": [
+     [
+      "from swapp.make_plots.plot_maps import gaussian_filter_nan_1d",
+      "from blxline.maps import gaussian_filter_nan_1d",
+      1
+     ],
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ],
+     [
+      "run = 1",
+      "run = 0",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      3
+     ],
+     [
+      "'/home/ghisalberti/Figures/comparison_models_jgr3.png'",
+      "f'{OUT}/figures/comparison_models_jgr3.png'",
+      1
+     ]
+    ]
+   },
+   {
+    "src": "Maps/FinalMapsPaper.ipynb",
+    "cell": 630,
+    "why": "comparison_models_jgr3.png, second pass (run=1, verbatim): reuses the maps of the first pass with a common colour scale, as in the paper figure",
+    "repl": [
+     [
+      "from swapp.make_plots.plot_maps import gaussian_filter_nan_1d",
+      "from blxline.maps import gaussian_filter_nan_1d",
+      1
+     ],
+     [
+      "'/home/ghisalberti/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      "f'{OUT}/BL_data_for_maps_without_cusps_withoutNp<3_all_sat_1min_2025-05-06.pkl'",
+      1
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      3
+     ],
+     [
+      "'/home/ghisalberti/Figures/comparison_models_jgr3.png'",
+      "f'{OUT}/figures/comparison_models_jgr3.png'",
+      1
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "file": "06_parametric_study.ipynb",
+  "title": "Step 6 - Parametric dependence of the X-line and comparison with the models",
+  "intro": "Rotation rate of the X-line with the IMF clock angle and shift rate with the dipole tilt, for the BL X-line (step 5) and for the model X-lines (DXL: dominant X-line, MRL: maximum reconnection rate line).\n\nInputs: `{OUT}/xlines/DeltaVz_*.pkl` (step 5), `{MODEL_LINES}/DXL_cla_*_coa_75_tilt_*.pkl` and `{MODEL_LINES}/MRL_cla*_tilt*.pkl`.\n\nCopied from Article3.ipynb (cells 10 and 12, disabled with a docstring, are not copied).",
+  "cells": [
+   {
+    "src": "Article3.ipynb",
+    "cell": 0
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 1
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 2
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 3
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 4
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 5,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 6,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 7,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 8
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 9,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 11
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 13
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 14
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 15
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 16
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 17,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 18
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 19,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 20,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 21
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 22,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 23
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 24
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 25
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 26
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 27,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 28,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 29,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 30
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 31
+   },
+   {
+    "src": "Article3.ipynb",
+    "cell": 32,
+    "repl": [
+     [
+      "f'/home/ghisalberti/komar_separators/DeltaVz_cla",
+      "f'{OUT}/xlines/DeltaVz_cla",
+      "opt"
+     ],
+     [
+      "f'/home/ghisalberti/komar_separators/",
+      "f'{MODEL_LINES}/",
+      "opt"
+     ]
+    ]
+   }
+  ]
+ }
+]

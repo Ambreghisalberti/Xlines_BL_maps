@@ -1,0 +1,12 @@
+# Versions of the "space" environment on kaa (python 3.10) with which the notebooks were run.
+numpy==2.2.6
+pandas==2.3.3
+scipy==1.15.2
+scikit-learn==1.7.2
+scikit-image==0.25.2
+matplotlib==3.10.7
+spok==0.1.1
+tscat==0.2.0
+ipywidgets==8.1.1
+plotly==6.3.1
+jupyterlab
